@@ -12,3 +12,12 @@ notifications:
     issues: issues@geode.apache.org
     pullrequests: notifications@geode.apache.org
     jira_options: link label comment
+
+
+github:
+  enabled_merge_buttons:
+    # enable squash button:
+    merge:  false 
+    # disable rebase button:
+    rebase: true 
+
