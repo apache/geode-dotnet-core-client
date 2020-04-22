@@ -17,7 +17,10 @@ notifications:
 github:
   enabled_merge_buttons:
     # enable squash button:
+    squash: true
+    # disable merge button:
+    merge: false
     merge:  false 
-    # disable rebase button:
+    # enable rebase button:
     rebase: true 
 
