@@ -20,7 +20,6 @@ github:
     squash: true
     # disable merge button:
     merge: false
-    merge:  false 
     # enable rebase button:
     rebase: true 
 
