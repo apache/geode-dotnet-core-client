@@ -1,0 +1,10 @@
+bin
+obj
+
+# "The Internet" says to check in everything under .idea *except* these two files
+workspace.xml
+tasks.xml
+
+.history/
+
+.vs/

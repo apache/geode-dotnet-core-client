@@ -1,0 +1,124 @@
+using System;
+using System.Collections.Generic;
+using System.Net.Cache;
+using Apache.Geode.DotNetCore;
+using NUnit.Framework;
+
+namespace GemfireDotNetTest
+{
+    public class SimpleAuthInitialize : IAuthInitialize
+    {
+        public Dictionary<string, string> GetCredentials()
+        {
+            Console.WriteLine("SimpleAuthInitialize::GetCredentials called");
+            var credentials = new Dictionary<string, string>();
+            credentials.Add("security-username", "root");
+            credentials.Add("security-password", "root-password");
+            return credentials;
+        }
+
+        public void Close()
+        {
+            Console.WriteLine("SimpleAuthInitialize::Close called");
+        }
+    }
+    
+    public class RegionFactoryUnitTests
+    {
+        [SetUp]
+        public void Setup()
+        {
+        }
+
+        private const string Username1 = "rtimmons";
+        private const string Username2 = "scharles";
+
+        private void createPool(IGeodeCache cache, int port)
+        {
+            using (var poolManager = cache.PoolManager)
+            {
+                using (var poolFactory = poolManager.CreatePoolFactory()
+                    .AddLocator("localhost", port))
+                {
+                    using (var pool = poolFactory.CreatePool("myPool"))
+                    {
+                        ;
+                    }
+                }
+            }
+        }
+
+        private void doPutsAndGets(Region region)
+        {
+            var fullname1 = "Robert Timmons";
+            var fullname2 = "Sylvia Charles";
+
+            region.PutString(Username1, fullname1);
+            region.PutString(Username2, fullname2);
+
+            var user1 = region.GetString(Username1);
+            var user2 = region.GetString(Username2);
+
+            Assert.AreEqual(user1, fullname1);
+            Assert.AreEqual(user2, fullname2);
+        }
+
+        private void DoRemoves(Region region)
+        {
+            region.Remove(Username1);
+            region.Remove(Username2);
+
+            var hasUser1 = region.ContainsValueForKey(Username1);
+            var hasUser2 = region.ContainsValueForKey(Username2);
+
+            Assert.AreEqual(hasUser1, false);
+            Assert.AreEqual(hasUser2, false);
+        }
+        
+        private void CreateRegionAndDoWork(IGeodeCache cache, string regionName, RegionShortcut regionType)
+        {
+            using (var regionFactory = cache.CreateRegionFactory(regionType))
+            {
+                using (var region = regionFactory.CreateRegion(regionName))
+                {
+                    doPutsAndGets(region);
+                    DoRemoves(region);
+                }
+            }
+        }
+        
+        [Test]
+        public void TestRegionFactoryCreateProxyRegion()
+        {
+            using (var cacheFactory = CacheFactory.Create()
+                .SetProperty("log-level", "none")
+                .SetProperty("log-file", "geode_native.log"))
+            {
+                using (var cache = cacheFactory.CreateCache())
+                {
+                    createPool(cache, 10334);
+                    CreateRegionAndDoWork(cache, "exampleRegion", RegionShortcut.Proxy);
+                }
+            }
+            Assert.Pass();
+        }
+       
+        [Test]
+        public void TestRegionFactoryCreateRegionWithAuthentication()
+        {
+            using (var cacheFactory = CacheFactory.Create()
+                .SetProperty("log-level", "debug")
+                .SetProperty("log-file", "geode_native_with_auth.log"))
+            {
+                cacheFactory.AuthInitialize = new SimpleAuthInitialize();
+                using (var cache = cacheFactory.CreateCache())
+                {
+                    createPool(cache, 10335);
+                    CreateRegionAndDoWork(cache, "authExampleRegion", RegionShortcut.CachingProxy);
+                }
+            }
+            Assert.Pass();
+        }
+    }
+}
+
