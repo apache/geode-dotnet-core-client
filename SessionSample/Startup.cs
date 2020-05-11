@@ -17,11 +17,6 @@ namespace SessionSample
     #region snippet1
     public class Startup
     {
-        CacheFactory cacheFactory;
-        Cache cache;
-        PoolFactory poolFactory;
-        RegionFactory regionFactory;
-
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -79,43 +74,6 @@ namespace SessionSample
                 endpoints.MapRazorPages();
             });
     }
-
-    private void InitializeGemFireObjects()
-        {
-          Console.WriteLine("Create PoolFactory");
-          //gemfireCache.TypeRegistry.PdxSerializer = new ReflectionBasedAutoSerializer();
-
-          try
-          {
-            Console.WriteLine("Create Pool");
-            // make sure the pool has been created
-            poolFactory.CreatePool("pool");
-          }
-          catch (Exception ex) { };
-          //catch (IllegalStateException e)
-          //{
-          //    // we end up here with this message if you've hit the reset link after the pool was created
-          //    if (e.Message != "Pool with the same name already exists")
-          //    {
-          //        throw;
-          //    }
-          //}
-
-          Console.WriteLine("Create Cache RegionFactory");
-          var regionFactory = cache.CreateRegionFactory(RegionShortcut.Proxy);
-          try
-          {
-            Console.WriteLine("Create CacheRegion");
-            regionFactory.CreateRegion("SteeltoeDemo");
-            Console.WriteLine("CacheRegion created");
-          }
-          catch (Exception ex) { };
-          //catch
-          //{
-          //    Console.WriteLine("Create CacheRegion failed... now trying to get the region");
-          //    cacheRegion = gemfireCache.GetRegion<string, string>(_regionName);
-          //}
-        }
   }
     #endregion
 }

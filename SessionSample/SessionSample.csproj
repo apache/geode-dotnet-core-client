@@ -7,11 +7,17 @@
 
   <ItemGroup>
     <PackageReference Include="Steeltoe.Common.Hosting" Version="3.0.0-m2" />
-    <PackageReference Include="Steeltoe.ConnectorCore" Version="3.0.0-gemfire" />
+    <PackageReference Include="Steeltoe.ConnectorCore" Version="3.0.0-gemfire">
+      <IncludeAssets>Yes</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GemFireCache\Apache.Geode.Session.csproj" />
+    <ProjectReference Include="..\GemFireCache\Apache.Geode.DotNetCore.Session.csproj" />
+    <ProjectReference Include="..\GemfireDotNet\Apache.Geode.DotNetCore.csproj">
+      <Private>true</Private>
+    </ProjectReference>
   </ItemGroup>
+
 
 </Project>
