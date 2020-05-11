@@ -16,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\GemfireDotNet\GemfireDotNet.csproj" />
+      <ProjectReference Include="..\GemfireDotNet\Apache.Geode.DotNetCore.csproj" />
     </ItemGroup>
 
 </Project>
