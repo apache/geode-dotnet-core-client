@@ -9,7 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Steeltoe.Connector;
-using Steeltoe.Management.CloudFoundry;
+//using Steeltoe.Management.CloudFoundry;
 using Microsoft.Extensions.Caching.Distributed;
 using Apache.Geode.DotNetCore;
 

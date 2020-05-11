@@ -9,11 +9,10 @@
   <ItemGroup>
     <PackageReference Include="Steeltoe.Common.Hosting" Version="3.0.0-m2" />
     <PackageReference Include="Steeltoe.ConnectorCore" Version="3.0.0-gemfire" />
-    <PackageReference Include="Steeltoe.Management.CloudFoundryCore" Version="3.0.0-m2" />
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\GemFireCache\Apache.Geode.Session.csproj" />
+    <ProjectReference Include="..\GemFireCache\Apache.Geode.DotNetCore.Session.csproj" />
   </ItemGroup>
 
 </Project>

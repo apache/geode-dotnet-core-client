@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 //using Steeltoe.Extensions.Configuration.CloudFoundry;
 using Steeltoe.Connector;
-using Steeltoe.Extensions.Logging;
+//using Steeltoe.Extensions.Logging;
 
 namespace GemFireSessionState
 {
@@ -22,7 +22,7 @@ namespace GemFireSessionState
             .ConfigureLogging((context, builder) =>
             {
               builder.AddConfiguration(context.Configuration.GetSection("Logging"));
-              builder.AddDynamicConsole();
+              //builder.AddDynamicConsole();
             });
   }
 }
