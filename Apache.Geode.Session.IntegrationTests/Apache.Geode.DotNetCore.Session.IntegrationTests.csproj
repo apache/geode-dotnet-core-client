@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GemFireCache\Apache.Geode.DotNetCore.Session.csproj" />
-    <ProjectReference Include="..\GemfireDotNet\Apache.Geode.DotNetCore.csproj" />
+    <ProjectReference Include="..\Apache.Geode.DotNetCore.Session\Apache.Geode.DotNetCore.Session.csproj" />
+    <ProjectReference Include="..\Apache.Geode.DotNetCore\Apache.Geode.DotNetCore.csproj" />
   </ItemGroup>
 
 </Project>

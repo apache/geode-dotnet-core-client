@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GemfireDotNet\Apache.Geode.DotNetCore.csproj" />
+    <ProjectReference Include="..\Apache.Geode.DotNetCore\Apache.Geode.DotNetCore.csproj" />
   </ItemGroup>
 
 </Project>
