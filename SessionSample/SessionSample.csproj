@@ -6,16 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Steeltoe.Common" Version="3.0.0-m2" />
+    <PackageReference Include="Steeltoe.Common.Abstractions" Version="3.0.0-m2" />
     <PackageReference Include="Steeltoe.Common.Hosting" Version="3.0.0-m2" />
-    <PackageReference Include="Steeltoe.ConnectorCore" Version="3.0.0-gemfire">
-    </PackageReference>
+    <PackageReference Include="Steeltoe.ConnectorCore" Version="3.0.0-gemfire" />
+    <PackageReference Include="Steeltoe.Extensions.Configuration.CloudFoundryBase" Version="3.0.0-m2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Apache.Geode.DotNetCore.Session\Apache.Geode.DotNetCore.Session.csproj" />
-    <ProjectReference Include="..\Apache.Geode.DotNetCore\Apache.Geode.DotNetCore.csproj">
-      <Private>true</Private>
-    </ProjectReference>
+    <ProjectReference Include="..\NetCore.Session\NetCore.Session.csproj" />
   </ItemGroup>
 
 

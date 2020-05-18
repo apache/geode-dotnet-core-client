@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30001.183
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Geode.DotNetCore", "Apache.Geode.DotNetCore\Apache.Geode.DotNetCore.csproj", "{09ABBCE7-B217-43F1-A51B-CC5BDCD8EE98}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetCore", "NetCore\NetCore.csproj", "{09ABBCE7-B217-43F1-A51B-CC5BDCD8EE98}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Geode.DotNetCore.Test", "Apache.Geode.DotNetCore.Test\Apache.Geode.DotNetCore.Test.csproj", "{501DEA7E-8985-42A8-8BC9-C073E1B6DFE0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetCore.Test", "NetCore.Test\NetCore.Test.csproj", "{501DEA7E-8985-42A8-8BC9-C073E1B6DFE0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Geode.DotNetCore.Session", "Apache.Geode.DotNetCore.Session\Apache.Geode.DotNetCore.Session.csproj", "{CC1FEC64-9AD6-4A69-ADF2-038CF67A8590}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetCore.Session", "NetCore.Session\NetCore.Session.csproj", "{CC1FEC64-9AD6-4A69-ADF2-038CF67A8590}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SessionState", "SessionState", "{38D87C7D-D5FE-43B8-80CC-1CE70167FB69}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Geode.DotNetCore.Session.Tests", "Apache.Geode.Session.Tests\Apache.Geode.DotNetCore.Session.Tests.csproj", "{C107D019-3B4F-403D-9040-ECB6E86C44E9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetCore.Session.Tests", "Session.Tests\NetCore.Session.Tests.csproj", "{C107D019-3B4F-403D-9040-ECB6E86C44E9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apache.Geode.DotNetCore.Session.IntegrationTests", "Apache.Geode.Session.IntegrationTests\Apache.Geode.DotNetCore.Session.IntegrationTests.csproj", "{742B4109-544E-492E-86AC-DC1E0FCCA596}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetCore.Session.IntegrationTests", "Session.IntegrationTests\NetCore.Session.IntegrationTests.csproj", "{742B4109-544E-492E-86AC-DC1E0FCCA596}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SessionSample", "SessionSample\SessionSample.csproj", "{6D0D1D93-917E-48EE-977C-16F65DB982BE}"
 EndProject

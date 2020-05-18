@@ -10,7 +10,7 @@ using Microsoft.Extensions.Hosting;
 using SessionSample.Middleware;
 using Microsoft.Extensions.Caching.Distributed;
 using System;
-using Apache.Geode.DotNetCore;
+using Apache.Geode.NetCore;
 
 namespace SessionSample
 {

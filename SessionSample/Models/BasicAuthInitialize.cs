@@ -1,4 +1,4 @@
-﻿using Apache.Geode.DotNetCore;
+﻿using Apache.Geode.NetCore;
 using System;
 using System.Collections.Generic;
 
