@@ -17,7 +17,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "debug")
                     .SetProperty("log-file", "TestClientCacheGetPdxReadSerialized.log"))
                 {
@@ -51,7 +51,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none")
                     .SetProperty("log-file", "geode_native.log"))
                 {
@@ -77,7 +77,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none")
                     .SetProperty("log-file", "geode_native.log"))
                 {
@@ -85,6 +85,7 @@ namespace GemfireDotNetTest
                     using (var cache = cacheFactory.CreateCache())
                     {
                         var poolManager = cache.PoolManager;
+                        poolManager.Dispose();
                     }
                 }
 
@@ -97,7 +98,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none")
                     .SetProperty("log-file", "geode_native.log"))
                 {
@@ -120,7 +121,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none"))
                 {
                     cacheFactory.PdxIgnoreUnreadFields = true;
@@ -140,7 +141,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none"))
                 {
                     cacheFactory.PdxIgnoreUnreadFields = true;
@@ -161,7 +162,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create()
+                using (var cacheFactory = CacheFactory.Create(client)
                     .SetProperty("log-level", "none"))
                 {
                     cacheFactory.PdxIgnoreUnreadFields = true;

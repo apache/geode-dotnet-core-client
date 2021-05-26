@@ -18,6 +18,13 @@ namespace Apache
                     GC.SuppressFinalize(this);
                 }
 
+                public IntPtr ContainedObject {
+                    get 
+                    {
+                        return _containedObject;
+                    }
+                }
+                
                 protected virtual void Dispose(bool disposing)
                 {
                     if (_disposed)

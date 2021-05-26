@@ -14,17 +14,20 @@ namespace GemfireDotNetTest
         [Test]
         public void TestPoolFactoryAddLocator()
         {
-            using (var cacheFactory = CacheFactory.Create()
-                    .SetProperty("log-level", "none")
-                    .SetProperty("log-file", "geode_native.log"))
+            using (var client = new Client())
             {
-                using (var cache = cacheFactory.CreateCache())
+                using (var cacheFactory = CacheFactory.Create(client)
+                        .SetProperty("log-level", "none")
+                        .SetProperty("log-file", "geode_native.log"))
                 {
-                    using (var poolManager = cache.PoolManager)
+                    using (var cache = cacheFactory.CreateCache())
                     {
-                        using (var poolFactory = poolManager.CreatePoolFactory())
+                        using (var poolManager = cache.PoolManager)
                         {
-                            poolFactory.AddLocator("localhost", 10334);
+                            using (var poolFactory = poolManager.CreatePoolFactory())
+                            {
+                              poolFactory.AddLocator("localhost", 10334);
+                            }
                         }
                     }
                 }
@@ -35,51 +38,51 @@ namespace GemfireDotNetTest
         [Test]
         public void TestPoolFactoryCreatePool()
         {
-            using (var cacheFactory = CacheFactory.Create()
-                    .SetProperty("log-level", "none")
-                    .SetProperty("log-file", "geode_native.log"))
+            using (var client = new Client())
             {
-                using (var cache = cacheFactory.CreateCache())
+                using (var cacheFactory = CacheFactory.Create(client)
+                        .SetProperty("log-level", "none")
+                        .SetProperty("log-file", "geode_native.log"))
                 {
-                    using (var poolManager = cache.PoolManager)
+                    using (var cache = cacheFactory.CreateCache())
                     {
-                        using (var poolFactory = poolManager.CreatePoolFactory())
+                        using (var poolManager = cache.PoolManager)
                         {
-                            poolFactory.AddLocator("localhost", 10334);
-                            using (var pool = poolFactory.CreatePool("myPool"))
+                            using (var poolFactory = poolManager.CreatePoolFactory())
                             {
-                                ;
+                                poolFactory.AddLocator("localhost", 10334);
+                                using (var pool = poolFactory.CreatePool("myPool"))
+                                {
+                                    ;
+                                }
                             }
                         }
                     }
                 }
+                Assert.Pass();
             }
-            Assert.Pass();
         }
 
         [Test]
         public void TestCreatePoolWithoutPoolManager()
         {
-          using (var cacheFactory = CacheFactory.Create()
-                  .SetProperty("log-level", "none")
-                  .SetProperty("log-file", "geode_native.log"))
-          {
-            using (var cache = cacheFactory.CreateCache())
+            using (var client = new Client())
             {
-              using (var poolFactory = cache.PoolFactory)
-              {
-                //using (var poolFactory = poolManager.CreatePoolFactory())
-                //{
-                  poolFactory.AddLocator("localhost", 10334);
-                  using (var pool = poolFactory.CreatePool("myPool"))
-                  {
-                    ;
-                  }
-                //}
-              }
+                using (var cacheFactory = CacheFactory.Create(client))
+                {
+                    using (var cache = cacheFactory.CreateCache())
+                    {
+                        using (var poolFactory = cache.PoolFactory)
+                        {
+                            poolFactory.AddLocator("localhost", 10334);
+                            using (var pool = poolFactory.CreatePool("myPool"))
+                            {
+                            }
+                        }
+                    }
+                }
+                Assert.Pass();
             }
-          }
-          Assert.Pass();
         }
   }
 }

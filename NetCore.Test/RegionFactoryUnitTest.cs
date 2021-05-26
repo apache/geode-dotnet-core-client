@@ -90,14 +90,17 @@ namespace GemfireDotNetTest
         [Test]
         public void TestRegionFactoryCreateProxyRegion()
         {
-            using (var cacheFactory = CacheFactory.Create()
-                .SetProperty("log-level", "none")
-                .SetProperty("log-file", "geode_native.log"))
+            using (var client = new Client())
             {
-                using (var cache = cacheFactory.CreateCache())
+                using (var cacheFactory = CacheFactory.Create(client)
+                    .SetProperty("log-level", "none")
+                    .SetProperty("log-file", "geode_native.log"))
                 {
-                    createPool(cache, 10334);
-                    CreateRegionAndDoWork(cache, "exampleRegion", RegionShortcut.Proxy);
+                    using (var cache = cacheFactory.CreateCache())
+                    {
+                        createPool(cache, 10334);
+                        CreateRegionAndDoWork(cache, "exampleRegion", RegionShortcut.Proxy);
+                    }
                 }
             }
             Assert.Pass();
@@ -106,15 +109,18 @@ namespace GemfireDotNetTest
         [Test]
         public void TestRegionFactoryCreateRegionWithAuthentication()
         {
-            using (var cacheFactory = CacheFactory.Create()
-                .SetProperty("log-level", "debug")
-                .SetProperty("log-file", "geode_native_with_auth.log"))
+            using (var client = new Client())
             {
-                cacheFactory.AuthInitialize = new SimpleAuthInitialize();
-                using (var cache = cacheFactory.CreateCache())
+                using (var cacheFactory = CacheFactory.Create(client)
+                    .SetProperty("log-level", "debug")
+                    .SetProperty("log-file", "geode_native_with_auth.log"))
                 {
-                    createPool(cache, 10335);
-                    CreateRegionAndDoWork(cache, "authExampleRegion", RegionShortcut.CachingProxy);
+                    cacheFactory.AuthInitialize = new SimpleAuthInitialize();
+                    using (var cache = cacheFactory.CreateCache())
+                    {
+                        createPool(cache, 10335);
+                        CreateRegionAndDoWork(cache, "authExampleRegion", RegionShortcut.CachingProxy);
+                    }
                 }
             }
             Assert.Pass();

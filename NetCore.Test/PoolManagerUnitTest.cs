@@ -14,17 +14,17 @@ namespace GemfireDotNetTest
         [Test]
         public void TestPoolManagerCreatePoolFactory()
         {
-            using (var cacheFactory = CacheFactory.Create()
-                    .SetProperty("log-level", "none")
-                    .SetProperty("log-file", "geode_native.log"))
+            using (var client = new Client())
             {
-                using (var cache = cacheFactory.CreateCache())
+                using (var cacheFactory = CacheFactory.Create(client))
                 {
-                    using (var poolManager = cache.PoolManager)
+                    using (var cache = cacheFactory.CreateCache())
                     {
-                        using (var poolFactory = poolManager.CreatePoolFactory())
+                        using (var poolManager = cache.PoolManager)
                         {
-                            ;
+                            using (var poolFactory = poolManager.CreatePoolFactory())
+                            {
+                            }
                         }
                     }
                 }

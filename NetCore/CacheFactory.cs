@@ -14,7 +14,7 @@ namespace Apache
                 private IAuthInitialize _authInitialize;
 
                 [DllImport(Constants.libPath, CharSet = CharSet.Auto)]
-                private static extern IntPtr apache_geode_CreateCacheFactory();
+                private static extern IntPtr apache_geode_CreateCacheFactory(IntPtr client);
 
                 [DllImport(Constants.libPath, CharSet = CharSet.Auto)]
                 private static extern void apache_geode_DestroyCacheFactory(IntPtr factory);
@@ -35,14 +35,14 @@ namespace Apache
                 [DllImport(Constants.libPath, CharSet = CharSet.Auto)]
                 private static extern void apache_geode_CacheFactory_SetProperty(IntPtr factory, IntPtr key, IntPtr value);
 
-                public static ICacheFactory Create()
+                public static ICacheFactory Create(Client client)
                 {
-                    return new CacheFactory();
+                    return new CacheFactory(client);
                 }
 
-                public CacheFactory()
+                public CacheFactory(GeodeNativeObject client)
                 {
-                    _containedObject = apache_geode_CreateCacheFactory();
+                    _containedObject = apache_geode_CreateCacheFactory(client.ContainedObject);
                 }
 
                 public string Version

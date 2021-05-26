@@ -43,12 +43,6 @@ namespace Apache
                     return new Pool(_containedObject, poolName);
                 }
 
-                public void Dispose()
-                {
-                    Dispose(true);
-                    GC.SuppressFinalize(this);
-                }
-
                 protected override void DestroyContainedObject()
                 {
                     apache_geode_DestroyPoolFactory(_containedObject);

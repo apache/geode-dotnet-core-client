@@ -14,7 +14,6 @@ namespace Apache
                 private string _name = String.Empty;
                 private PoolManager _poolManager = null;
                 private PoolFactory _poolFactory = null;
-                private bool _closed = false;
                 private IAuthInitialize _authInitialize;
                 private GetCredentialsDelegateInternal _getCredentialsDelegate;
                 private CloseDelegateInternal _closeDelegate;
@@ -161,6 +160,15 @@ namespace Apache
 
                 protected override void DestroyContainedObject()
                 {
+                    // It turns out, C# "wrapper" objects need to get rid of
+                    // *all* contained objects, due to vagaries of Geode 
+                    // Native object graph, in order to ensure a leak-free
+                    // shutdown.  We get rid of our non-cache objects first
+                    // here, in case it makes a difference.
+                    _poolManager?.Dispose();
+                    _poolManager = null;
+                    _poolFactory?.Dispose();
+                    _poolFactory = null;
                     apache_geode_DestroyCache(_containedObject);
                     _containedObject = IntPtr.Zero;
                 }
