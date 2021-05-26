@@ -12,8 +12,8 @@ namespace GemfireDotNetTest
         {
             Console.WriteLine("SimpleAuthInitialize::GetCredentials called");
             var credentials = new Dictionary<string, string>();
-            credentials.Add("security-username", "root");
-            credentials.Add("security-password", "root-password");
+            credentials.Add("security-username", "server");
+            credentials.Add("security-password", "server");
             return credentials;
         }
 
