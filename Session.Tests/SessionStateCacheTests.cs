@@ -35,13 +35,16 @@ namespace Apache.Geode.Session.Tests
     [Fact]
     public void NullPoolFactory_Throws()
     {
-      PoolFactory poolFactory = null;
-      var cacheFactory = CacheFactory.Create()
+      using (var client = new Client())
+      {
+        PoolFactory poolFactory = null;
+        var cacheFactory = CacheFactory.Create(client)
           .SetProperty("log-level", "debug")
           .SetProperty("log-file", "SessionStateCacheTests.log");
 
-      var cache = (Cache)cacheFactory.CreateCache();
-      Assert.Throws<ArgumentNullException>(() => new SessionStateCache(cache, _regionName));
+        var cache = (Cache)cacheFactory.CreateCache();
+        Assert.Throws<ArgumentNullException>(() => new SessionStateCache(cache, _regionName));
+      }
     }
   }
 }
