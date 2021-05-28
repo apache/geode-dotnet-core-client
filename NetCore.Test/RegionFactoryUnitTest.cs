@@ -92,7 +92,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create(client)
+                using (var cacheFactory = CacheFactory.Create()
                     .SetProperty("log-level", "none")
                     .SetProperty("log-file", "geode_native.log"))
                 {
@@ -111,7 +111,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create(client)
+                using (var cacheFactory = CacheFactory.Create()
                     .SetProperty("log-level", "debug")
                     .SetProperty("log-file", "geode_native_with_auth.log"))
                 {

@@ -16,7 +16,7 @@ namespace GemfireDotNetTest
         {
             using (var client = new Client())
             {
-                using (var cacheFactory = CacheFactory.Create(client))
+                using (var cacheFactory = CacheFactory.Create())
                 {
                     using (var cache = cacheFactory.CreateCache())
                     {

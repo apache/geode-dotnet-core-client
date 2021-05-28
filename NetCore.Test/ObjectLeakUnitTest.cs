@@ -16,7 +16,7 @@ namespace GemfireDotNetTest
         {
             var client = new Client();
             
-            using (var cacheFactory = CacheFactory.Create(client))
+            using (var cacheFactory = CacheFactory.Create())
             {
                 Assert.Throws<InvalidOperationException>(() => client.Dispose());
             }

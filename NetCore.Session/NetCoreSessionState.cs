@@ -321,10 +321,9 @@ namespace Apache.Geode.Session
             }
 
             _connectLock.Wait();
-            RegionFactory regionFactory = null;
             try
             {
-                regionFactory = _cache.CreateRegionFactory(RegionShortcut.Proxy);
+                using var regionFactory = _cache.CreateRegionFactory(RegionShortcut.Proxy);
                 try
                 {
                     _logger?.LogTrace("Create CacheRegion");

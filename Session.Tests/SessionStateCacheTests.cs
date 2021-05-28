@@ -9,7 +9,6 @@ namespace Apache.Geode.Session.Tests
   [Trait("Category", "Integration")]
   public class SessionStateStoreTests : IDisposable
   {
-    private static string _regionName = "testRegion";
 
     private Cache Cache { get; set; }
     private string CacheXmlFilePath { get; set; }
@@ -29,21 +28,6 @@ namespace Apache.Geode.Session.Tests
       }
       catch (Exception)
       {
-      }
-    }
-
-    [Fact]
-    public void NullPoolFactory_Throws()
-    {
-      using (var client = new Client())
-      {
-        PoolFactory poolFactory = null;
-        var cacheFactory = CacheFactory.Create(client)
-          .SetProperty("log-level", "debug")
-          .SetProperty("log-file", "SessionStateCacheTests.log");
-
-        var cache = (Cache)cacheFactory.CreateCache();
-        Assert.Throws<ArgumentNullException>(() => new SessionStateCache(cache, _regionName));
       }
     }
   }
