@@ -1,60 +1,51 @@
 using System;
 using Apache.Geode.NetCore;
-using NUnit.Framework;
+using Xunit;
 
-namespace GemfireDotNetTest
+namespace GemfireDotNetFact
 {
-    public class CacheFactoryUnitTests 
+    public class CacheFactoryUnitFacts 
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
-        [Test]
-        public void TestCreateFactory()
+        [Fact]
+        public void FactCreateFactory()
         {
             using (var client = new Client())
             {
                 using (var cacheFactory = CacheFactory.Create())
                 {
-                    Assert.IsNotNull(cacheFactory);
+                    Assert.NotNull(cacheFactory);
                 }
             }
         }
         
-        [Test]
-        public void TestCacheFactoryGetVersion()
+        [Fact]
+        public void FactCacheFactoryGetVersion()
         {
             using (var client = new Client())
             {
                 using (var cacheFactory = CacheFactory.Create())
                 {
                     var version = cacheFactory.Version;
-                    Assert.AreNotEqual(version, String.Empty);
+                    Assert.NotEqual(version, String.Empty);
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
-        public void TestCacheFactoryGetProductDescription()
+        [Fact]
+        public void FactCacheFactoryGetProductDescription()
         {
             using (var client = new Client())
             {
                 using (var cacheFactory = CacheFactory.Create())
                 {
                     var description = cacheFactory.ProductDescription;
-                    Assert.AreNotEqual(description, String.Empty);
+                    Assert.NotEqual(description, String.Empty);
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
-        public void TestCacheFactorySetPdxIgnoreUnreadFields()
+        [Fact]
+        public void FactCacheFactorySetPdxIgnoreUnreadFields()
         {
             using (var client = new Client())
             {
@@ -63,13 +54,11 @@ namespace GemfireDotNetTest
                     cacheFactory.PdxIgnoreUnreadFields = true;
                     cacheFactory.PdxIgnoreUnreadFields = false;
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
-        public void TestCacheFactorySetPdxReadSerialized()
+        [Fact]
+        public void FactCacheFactorySetPdxReadSerialized()
         {
             using (var client = new Client())
             {
@@ -78,13 +67,11 @@ namespace GemfireDotNetTest
                     cacheFactory.PdxReadSerialized = true;
                     cacheFactory.PdxReadSerialized = false;
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
-        public void TestCacheFactoryCreateCache()
+        [Fact]
+        public void FactCacheFactoryCreateCache()
         {
             using (var client = new Client())
             {
@@ -95,13 +82,11 @@ namespace GemfireDotNetTest
                         ;
                     }
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
-        public void TestCacheFactorySetProperty()
+        [Fact]
+        public void FactCacheFactorySetProperty()
         {
             using (var client = new Client())
             {
@@ -110,8 +95,6 @@ namespace GemfireDotNetTest
                     cacheFactory.SetProperty("log-level", "none")
                         .SetProperty("log-file", "geode_native.log");
                 }
-
-                Assert.Pass();
             }
         }
     }

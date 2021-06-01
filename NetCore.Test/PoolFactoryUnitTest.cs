@@ -1,17 +1,12 @@
 using System.Net.Cache;
 using Apache.Geode.NetCore;
-using NUnit.Framework;
+using Xunit;
 
 namespace GemfireDotNetTest
 {
     public class PoolFactoryUnitTests
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-        
-        [Test]
+        [Fact]
         public void TestPoolFactoryAddLocator()
         {
             using (var client = new Client())
@@ -32,10 +27,9 @@ namespace GemfireDotNetTest
                     }
                 }
             }
-            Assert.Pass();
         }
         
-        [Test]
+        [Fact]
         public void TestPoolFactoryCreatePool()
         {
             using (var client = new Client())
@@ -59,11 +53,10 @@ namespace GemfireDotNetTest
                         }
                     }
                 }
-                Assert.Pass();
             }
         }
 
-        [Test]
+        [Fact]
         public void TestCreatePoolWithoutPoolManager()
         {
             using (var client = new Client())
@@ -81,7 +74,6 @@ namespace GemfireDotNetTest
                         }
                     }
                 }
-                Assert.Pass();
             }
         }
   }

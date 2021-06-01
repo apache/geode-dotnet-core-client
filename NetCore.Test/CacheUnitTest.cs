@@ -1,18 +1,13 @@
 using System;
 using System.Net.Cache;
 using Apache.Geode.NetCore;
-using NUnit.Framework;
+using Xunit;
 
 namespace GemfireDotNetTest
 {
     public class CacheUnitTests
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-        
-        [Test]
+        [Fact]
         public void TestClientCacheGetPdxReadSerialized()
         {
             using (var client = new Client())
@@ -26,13 +21,13 @@ namespace GemfireDotNetTest
                         cacheFactory.PdxReadSerialized = true;
                         using (var cache = cacheFactory.CreateCache())
                         {
-                            Assert.AreEqual(cache.GetPdxReadSerialized(), true);
+                            Assert.True(cache.GetPdxReadSerialized());
                         }
 
                         cacheFactory.PdxReadSerialized = false;
                         using (var otherCache = cacheFactory.CreateCache())
                         {
-                            Assert.AreEqual(otherCache.GetPdxReadSerialized(), false);
+                            Assert.False(otherCache.GetPdxReadSerialized());
                         }
                     }
                     catch (Exception e)
@@ -41,12 +36,10 @@ namespace GemfireDotNetTest
                         throw;
                     }
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
+        [Fact]
         public void TestClientCacheGetPdxIgnoreUnreadFields()
         {
             using (var client = new Client())
@@ -58,21 +51,19 @@ namespace GemfireDotNetTest
                     cacheFactory.PdxIgnoreUnreadFields = true;
                     using (var cache = cacheFactory.CreateCache())
                     {
-                        Assert.AreEqual(cache.GetPdxIgnoreUnreadFields(), true);
+                        Assert.True(cache.GetPdxIgnoreUnreadFields());
                     }
 
                     cacheFactory.PdxIgnoreUnreadFields = false;
                     using (var otherCache = cacheFactory.CreateCache())
                     {
-                        Assert.AreEqual(otherCache.GetPdxIgnoreUnreadFields(), false);
+                        Assert.False(otherCache.GetPdxIgnoreUnreadFields());
                     }
                 }
-
-                Assert.Pass();
             }
         }
 
-        [Test]
+        [Fact]
         public void TestClientCacheGetPoolManager()
         {
             using (var client = new Client())
@@ -88,12 +79,10 @@ namespace GemfireDotNetTest
                         poolManager.Dispose();
                     }
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
+        [Fact]
         public void TestClientCacheCreateRegionFactory()
         {
             using (var client = new Client())
@@ -111,12 +100,10 @@ namespace GemfireDotNetTest
                         }
                     }
                 }
-
-                Assert.Pass();
             }
         }
 
-        [Test]
+        [Fact]
         public void TestClientCacheGetName()
         {
             using (var client = new Client())
@@ -128,15 +115,13 @@ namespace GemfireDotNetTest
                     using (var cache = cacheFactory.CreateCache())
                     {
                         var cacheName = cache.Name;
-                        Assert.AreNotEqual(cacheName, String.Empty);
+                        Assert.NotEqual(cacheName, String.Empty);
                     }
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
+        [Fact]
         public void TestClientCacheClose()
         {
             using (var client = new Client())
@@ -147,17 +132,15 @@ namespace GemfireDotNetTest
                     cacheFactory.PdxIgnoreUnreadFields = true;
                     using (var cache = cacheFactory.CreateCache())
                     {
-                        Assert.IsFalse(cache.Closed);
-                        Assert.DoesNotThrow(delegate { cache.Close(); });
-                        Assert.IsTrue(cache.Closed);
+                        Assert.False(cache.Closed);
+                        cache.Close();
+                        Assert.True(cache.Closed);
                     }
                 }
-
-                Assert.Pass();
             }
         }
         
-        [Test]
+        [Fact]
         public void TestClientCacheCloseWithKeepalive()
         {
             using (var client = new Client())
@@ -168,21 +151,19 @@ namespace GemfireDotNetTest
                     cacheFactory.PdxIgnoreUnreadFields = true;
                     using (var cache = cacheFactory.CreateCache())
                     {
-                        Assert.IsFalse(cache.Closed);
-                        Assert.DoesNotThrow(delegate() { cache.Close(true); });
-                        Assert.IsTrue(cache.Closed);
+                        Assert.False(cache.Closed);
+                        cache.Close(true);
+                        Assert.True(cache.Closed);
 
                     }
 
                     using (var otherCache = cacheFactory.CreateCache())
                     {
-                        Assert.IsFalse(otherCache.Closed);
-                        Assert.DoesNotThrow(delegate() { otherCache.Close(false); });
-                        Assert.IsTrue(otherCache.Closed);
+                        Assert.False(otherCache.Closed);
+                        otherCache.Close(false);
+                        Assert.True(otherCache.Closed);
                     }
                 }
-
-                Assert.Pass();
             }
         }
     }

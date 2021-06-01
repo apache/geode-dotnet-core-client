@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Cache;
 using Apache.Geode.NetCore;
-using NUnit.Framework;
+using Xunit;
 
 namespace GemfireDotNetTest
 {
@@ -25,11 +25,6 @@ namespace GemfireDotNetTest
     
     public class RegionFactoryUnitTests
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
         private const string Username1 = "rtimmons";
         private const string Username2 = "scharles";
 
@@ -59,8 +54,8 @@ namespace GemfireDotNetTest
             var user1 = region.GetString(Username1);
             var user2 = region.GetString(Username2);
 
-            Assert.AreEqual(user1, fullname1);
-            Assert.AreEqual(user2, fullname2);
+            Assert.Equal(user1, fullname1);
+            Assert.Equal(user2, fullname2);
         }
 
         private void DoRemoves(Region region)
@@ -71,8 +66,8 @@ namespace GemfireDotNetTest
             var hasUser1 = region.ContainsValueForKey(Username1);
             var hasUser2 = region.ContainsValueForKey(Username2);
 
-            Assert.AreEqual(hasUser1, false);
-            Assert.AreEqual(hasUser2, false);
+            Assert.False(hasUser1);
+            Assert.False(hasUser2);
         }
         
         private void CreateRegionAndDoWork(IGeodeCache cache, string regionName, RegionShortcut regionType)
@@ -87,7 +82,7 @@ namespace GemfireDotNetTest
             }
         }
         
-        [Test]
+        [Fact]
         public void TestRegionFactoryCreateProxyRegion()
         {
             using (var client = new Client())
@@ -103,10 +98,9 @@ namespace GemfireDotNetTest
                     }
                 }
             }
-            Assert.Pass();
         }
        
-        [Test]
+        [Fact]
         public void TestRegionFactoryCreateRegionWithAuthentication()
         {
             using (var client = new Client())
@@ -123,7 +117,6 @@ namespace GemfireDotNetTest
                     }
                 }
             }
-            Assert.Pass();
         }
     }
 }

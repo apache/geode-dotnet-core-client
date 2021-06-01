@@ -1,17 +1,12 @@
 using System;
 using Apache.Geode.NetCore;
-using NUnit.Framework;
+using Xunit;
 
 namespace GemfireDotNetTest
 {
     public class ObjectLeakUnitTests 
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
-        [Test]
+        [Fact]
         public void TestLeakCacheFactory()
         {
             var client = new Client();

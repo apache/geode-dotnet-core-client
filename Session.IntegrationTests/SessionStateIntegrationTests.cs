@@ -17,7 +17,7 @@ namespace Apache.Geode.Session.IntegrationTests
         {
             using var client = new Client();
             using var cacheFactory = CacheFactory.Create()
-            .SetProperty("log-level", "error");
+                .SetProperty("log-level", "none");
 
             using var cache = (Cache)cacheFactory.CreateCache();
 
