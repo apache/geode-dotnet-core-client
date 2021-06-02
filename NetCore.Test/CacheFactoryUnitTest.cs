@@ -2,12 +2,12 @@ using System;
 using Apache.Geode.NetCore;
 using Xunit;
 
-namespace GemfireDotNetFact
+namespace GemfireDotNetTest
 {
-    public class CacheFactoryUnitFacts 
+    public class CacheFactoryUnitTests 
     {
         [Fact]
-        public void FactCreateFactory()
+        public void TestCreateFactory()
         {
             using (var client = new Client())
             {
@@ -19,7 +19,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactoryGetVersion()
+        public void TestCacheFactoryGetVersion()
         {
             using (var client = new Client())
             {
@@ -32,7 +32,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactoryGetProductDescription()
+        public void TestCacheFactoryGetProductDescription()
         {
             using (var client = new Client())
             {
@@ -45,7 +45,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactorySetPdxIgnoreUnreadFields()
+        public void TestCacheFactorySetPdxIgnoreUnreadFields()
         {
             using (var client = new Client())
             {
@@ -58,7 +58,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactorySetPdxReadSerialized()
+        public void TestCacheFactorySetPdxReadSerialized()
         {
             using (var client = new Client())
             {
@@ -71,7 +71,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactoryCreateCache()
+        public void TestCacheFactoryCreateCache()
         {
             using (var client = new Client())
             {
@@ -86,7 +86,7 @@ namespace GemfireDotNetFact
         }
         
         [Fact]
-        public void FactCacheFactorySetProperty()
+        public void TestCacheFactorySetProperty()
         {
             using (var client = new Client())
             {
