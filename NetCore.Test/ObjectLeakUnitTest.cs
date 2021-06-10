@@ -4,7 +4,8 @@ using Xunit;
 
 namespace GemfireDotNetTest
 {
-    public class ObjectLeakUnitTests 
+    [Collection("Geode .net Core Collection")]
+    public class ObjectLeakUnitTests
     {
         [Fact]
         public void TestLeakCacheFactory()

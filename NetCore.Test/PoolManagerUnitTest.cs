@@ -4,26 +4,16 @@ using Xunit;
 
 namespace GemfireDotNetTest
 {
+    [Collection("Geode .net Core Collection")]
     public class PoolManagerUnitTests
     {
         [Fact]
         public void TestPoolManagerCreatePoolFactory()
         {
-            using (var client = new Client())
-            {
-                using (var cacheFactory = CacheFactory.Create())
-                {
-                    using (var cache = cacheFactory.CreateCache())
-                    {
-                        using (var poolManager = cache.PoolManager)
-                        {
-                            using (var poolFactory = poolManager.CreatePoolFactory())
-                            {
-                            }
-                        }
-                    }
-                }
-            }
+            using var cacheFactory = CacheFactory.Create();
+            using var cache = cacheFactory.CreateCache();
+            using var poolManager = cache.PoolManager;
+            using var poolFactory = poolManager.CreatePoolFactory();
         }
     }
 }

@@ -23,6 +23,8 @@ namespace GemfireDotNetTest
         }
     }
     
+
+    [Collection("Geode .net Core Collection")]
     public class RegionFactoryUnitTests
     {
         private const string Username1 = "rtimmons";
@@ -30,17 +32,10 @@ namespace GemfireDotNetTest
 
         private void createPool(IGeodeCache cache, int port)
         {
-            using (var poolManager = cache.PoolManager)
-            {
-                using (var poolFactory = poolManager.CreatePoolFactory()
-                    .AddLocator("localhost", port))
-                {
-                    using (var pool = poolFactory.CreatePool("myPool"))
-                    {
-                        ;
-                    }
-                }
-            }
+            using var poolManager = cache.PoolManager;
+            using var poolFactory = poolManager.CreatePoolFactory()
+                .AddLocator("localhost", port);
+            using var pool = poolFactory.CreatePool("myPool");
         }
 
         private void doPutsAndGets(Region region)
@@ -72,51 +67,36 @@ namespace GemfireDotNetTest
         
         private void CreateRegionAndDoWork(IGeodeCache cache, string regionName, RegionShortcut regionType)
         {
-            using (var regionFactory = cache.CreateRegionFactory(regionType))
-            {
-                using (var region = regionFactory.CreateRegion(regionName))
-                {
-                    doPutsAndGets(region);
-                    DoRemoves(region);
-                }
-            }
+            using var regionFactory = cache.CreateRegionFactory(regionType);
+            using var region = regionFactory.CreateRegion(regionName);
+
+            doPutsAndGets(region);
+            DoRemoves(region);
         }
         
         [Fact]
         public void TestRegionFactoryCreateProxyRegion()
         {
-            using (var client = new Client())
-            {
-                using (var cacheFactory = CacheFactory.Create()
-                    .SetProperty("log-level", "none")
-                    .SetProperty("log-file", "geode_native.log"))
-                {
-                    using (var cache = cacheFactory.CreateCache())
-                    {
-                        createPool(cache, 10334);
-                        CreateRegionAndDoWork(cache, "exampleRegion", RegionShortcut.Proxy);
-                    }
-                }
-            }
+            using var cacheFactory = CacheFactory.Create()
+                .SetProperty("log-level", "none")
+                .SetProperty("log-file", "geode_native.log");
+            using var cache = cacheFactory.CreateCache();
+
+            createPool(cache, 10334);
+            CreateRegionAndDoWork(cache, "exampleRegion", RegionShortcut.Proxy);
         }
        
         [Fact]
         public void TestRegionFactoryCreateRegionWithAuthentication()
         {
-            using (var client = new Client())
-            {
-                using (var cacheFactory = CacheFactory.Create()
-                    .SetProperty("log-level", "debug")
-                    .SetProperty("log-file", "geode_native_with_auth.log"))
-                {
-                    cacheFactory.AuthInitialize = new SimpleAuthInitialize();
-                    using (var cache = cacheFactory.CreateCache())
-                    {
-                        createPool(cache, 10335);
-                        CreateRegionAndDoWork(cache, "authExampleRegion", RegionShortcut.CachingProxy);
-                    }
-                }
-            }
+            using var cacheFactory = CacheFactory.Create()
+                .SetProperty("log-level", "debug")
+                .SetProperty("log-file", "geode_native_with_auth.log");
+            cacheFactory.AuthInitialize = new SimpleAuthInitialize();
+            using var cache = cacheFactory.CreateCache();
+
+            createPool(cache, 10335);
+            CreateRegionAndDoWork(cache, "authExampleRegion", RegionShortcut.CachingProxy);
         }
     }
 }
