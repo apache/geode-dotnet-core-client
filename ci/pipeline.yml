@@ -1355,16 +1355,8 @@ resources:
     ignore_paths: []
     paths:
     - ci/*
-    uri: https://github.com/apache/geode-native.git
+    uri: https://github.com/apache/geode-dotnet-core-client.git
   type: git
-- icon: docker
-  name: clang-tools-image
-  source:
-    password: ((concourse-gcp-key))
-    repository: gcr.io/apachegeode-ci/geode-native-clang-tools
-    tag: latest
-    username: _json_key
-  type: docker-image
 - icon: docker
   name: gcloud-image
   source:
@@ -1382,62 +1374,20 @@ resources:
     url: https://maven.apachegeode-ci.info/snapshots
     version: 1\.15\.0-build\..*
   type: maven-resource
-- icon: google-cloud
-  name: geode-native-develop-build-rhel-7-gci
+- icon: archive
+  name: geode-native-latest
   source:
-    family: geode-native-develop-build-rhel-7
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-rhel-8-gci
-  source:
-    family: geode-native-develop-build-rhel-8
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-ubuntu-16-04-gci
-  source:
-    family: geode-native-develop-build-ubuntu-16-04
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-ubuntu-18-04-gci
-  source:
-    family: geode-native-develop-build-ubuntu-18-04
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-ubuntu-20-04-gci
-  source:
-    family: geode-native-develop-build-ubuntu-20-04
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-windows-2016-vs-2017-gci
-  source:
-    family: geode-native-develop-build-windows-2016-vs-2017
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
-- icon: google-cloud
-  name: geode-native-develop-build-windows-2019-vs-2019-gci
-  source:
-    family: geode-native-develop-build-windows-2019-vs-2019
-    family_project: apachegeode-ci
-    key: ((concourse-gcp-key))
-  type: gci-resource
+    artifact: org.apache.geode:apache-geode-native:tgz
+    url: https://apachegeode-ci-concourse/geode-native/geode-native-develop/packages/windows-2019-vs-2019/debug/apache-geode-native-1.14.0-build.1-Windows-64bit.zip
+    version: 1\.14\.1-build\..*
+  type: gcs-resource
 - check_every: 1m
   icon: github
   name: source
   source:
     access_token: ((github-pr-access-token))
     base_branch: develop
-    repository: apache/geode-native
+    repository: apache/geode-dotnet-core-client
   type: github-pr-resource
 - icon: docker
   name: task-image
