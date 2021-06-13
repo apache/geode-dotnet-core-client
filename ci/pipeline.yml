@@ -1,0 +1,1468 @@
+groups:
+- jobs:
+  - build-windows-net5-debug
+  - check-source
+  name: builds
+- jobs:
+  - update-pipeline
+  name: meta
+- jobs:
+  - update-pipeline
+  - build-windows-net5-debug
+  - check-source
+  name: all
+jobs:
+- name: build-windows-net5-debug
+  plan:
+  - in_parallel:
+      fail_fast: true
+      steps:
+      - get: version
+      - get: source
+        on_success:
+          try:
+            attempts: 5
+            get_params:
+              skip_download: true
+            params:
+              context: build-windows-2019-vs-2019-debug
+              description: null
+              path: source
+              status: pending
+            put: pr-status-pending
+            resource: source
+        trigger: true
+        version: every
+      - get: task-image
+  - config:
+      inputs:
+      - name: source
+      platform: linux
+      run:
+        args:
+        - -c
+        - |-
+          # Cribbed shamelessly from geode/ci/scripts/shared_utilities.sh
+          is_source_from_pr_testable() {
+            if [[ $# -ne 3 ]]; then
+              >&2 echo "Invalid args. Try ${0} \"<repo_path>\" \"<list of exclusion dirs>\""
+              exit 1
+            fi
+            local repo_dir="${1}"
+            if [[ ! -d "${repo_dir}" ]]; then
+              # If the repo_dir does not exist, assume call from non-PR
+              return 0;
+            fi
+
+            pushd "${repo_dir}" 2>&1 >> /dev/null
+              local base_dir=$(git rev-parse --show-toplevel)
+              local github_pr_dir="${base_dir}/.git/resource"
+              pushd ${base_dir} 2>&1 >> /dev/null
+                local return_code=0
+                if [ -d "${github_pr_dir}" ]; then
+                  # Modify this path list with directories to exclude
+                  local exclude_dirs="${2}"
+                  for d in $(echo ${exclude_dirs}); do
+                    local exclude_pathspec="${exclude_pathspec} :(exclude,glob)${d}/**"
+                  done
+                  local exclude_files="${3}"
+                  for f in "${exclude_files}"; do
+                    local exclude_pathspec="${exclude_pathspec} :(exclude,glob)${f}"
+                  done
+                  pushd ${base_dir} &> /dev/null
+                    local files=$(git diff --name-only $(cat "${github_pr_dir}/base_sha") $(cat "${github_pr_dir}/head_sha") -- . $(echo ${exclude_pathspec}))
+                  popd &> /dev/null
+                  if [[ -z "${files}" ]]; then
+                    >&2 echo "Code changes are from CI only"
+                    return_code=1
+                  else
+                    >&2 echo "real code change here!"
+                  fi
+                else
+                  >&2 echo "repo is not from a PR"
+                fi
+              popd 2>&1 >> /dev/null
+            popd 2>&1 >> /dev/null
+            return ${return_code}
+          }
+
+          exclude_dirs="ci packer docker tools"
+          exclude_files="*/*.md"
+          is_source_from_pr_testable "source" "${exclude_dirs}" "${exclude_files}" && exit 0 || exit 1
+        path: bash
+    image: task-image
+    on_failure:
+      do:
+      - try:
+          attempts: 5
+          get_params:
+            skip_download: true
+          params:
+            context: build-windows-2019-vs-2019-debug
+            description: Non-code changes are not compiled.
+            path: source
+            status: success
+          put: pr-status-success
+          resource: source
+    task: is-source-change
+  - do:
+    - do:
+      - in_parallel:
+          fail_fast: true
+          steps:
+          - get: gcloud-image
+          - get: geode-native-develop-build-windows-2019-vs-2019-gci
+      - in_parallel:
+          fail_fast: true
+          steps:
+          - config:
+              inputs:
+              - name: geode-native-develop-build-windows-2019-vs-2019-gci
+                path: image
+              outputs:
+              - name: instance
+              platform: linux
+              run:
+                args:
+                - -c
+                - |-
+                  set -ueo pipefail
+                  GOOGLE_PROJECT=apachegeode-ci
+                  GOOGLE_ZONE=us-central1-a
+                  INSTANCE_USER=build
+                  INSTANCE_DIR=$(pwd)/instance
+
+                  if [ ! -d "${INSTANCE_DIR}" ]; then
+                    echo "${INSTANCE_DIR} not found."
+                    exit 1
+                  fi
+                  ssh_key_file=${INSTANCE_DIR}/identity
+                  ssh_pubkey_file=${ssh_key_file}.pub
+                  ssh-keygen -m pem  -t rsa -f ${ssh_key_file} -C "${INSTANCE_USER}" -N '' <<< y
+                  ssh_pubkey=$(cat ${ssh_pubkey_file})
+                  ssh_keys_file=${INSTANCE_DIR}/ssh_keys_file
+                  echo "${INSTANCE_USER}:${ssh_pubkey}" > ${ssh_keys_file}
+                  instance_name=build-$(cat /proc/sys/kernel/random/uuid)
+                  image_name=$(cat image/name)
+                  time_to_live=$(( $(date +%s) + ( 4 * 60 * 60 ) ))
+                  instance_file=${INSTANCE_DIR}/instance.sh
+                  gcloud compute instances create ${instance_name} \
+                      --format='config[export](name,networkInterfaces[0].accessConfigs[0].natIP)' \
+                      --project=${GOOGLE_PROJECT} \
+                      --zone=${GOOGLE_ZONE} \
+                      --subnet=default \
+                      --machine-type=e2-standard-16 \
+                      --boot-disk-size=200GB \
+                      --boot-disk-type=pd-standard \
+                      --boot-disk-device-name=${instance_name} \
+                      --image-project=${GOOGLE_PROJECT} \
+                      --image=${image_name} \
+                      --metadata-from-file ssh-keys=${ssh_keys_file} \
+                      --labels=time-to-live=${time_to_live},pipeline-name=geode-native-develop,build-config=debug \
+                      > ${instance_file}
+                  INSTANCE_USER=build
+                  INSTANCE_DIR=$(pwd)/instance
+
+                  if [ ! -d "${INSTANCE_DIR}" ]; then
+                    echo "${INSTANCE_DIR} not found."
+                    exit 1
+                  fi
+
+                  SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+                  ssh_key_file=${INSTANCE_DIR}/identity
+                  if [ ! -r "${ssh_key_file}" ]; then
+                    echo "${ssh_key_file} not readable."
+                    exit 1
+                  fi
+
+                  instance_file=${INSTANCE_DIR}/instance.sh
+                  if [ ! -r "${instance_file}" ]; then
+                    echo "${instance_file} not readable."
+                    exit 1
+                  fi
+
+                  external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+                  function remote_shell {
+                    ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+                  }
+
+                  function remote_download {
+                    scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+                  }
+
+                  function remote_download_directory {
+                    ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+                  }
+
+                  function remote_upload {
+                    scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+                  }
+                  SSH_OPTIONS="${SSH_OPTIONS} -o ConnectTimeout=10"
+                  echo "Waiting for ssh on ${instance_name} to be ready."
+                  console_file=$(mktemp)
+                  console_next=0
+                  while ! remote_shell echo ready 2>/dev/null ; do
+                    gcloud compute instances get-serial-port-output ${instance_name} \
+                        --start ${console_next} \
+                        --project=${GOOGLE_PROJECT} \
+                        --zone=${GOOGLE_ZONE} \
+                        --format='value[separator="
+                  "](next,contents)' \
+                        > ${console_file}
+                    tmp_next=$(head -n 1 ${console_file})
+                    if (( tmp_next != console_next )); then
+                      console_next=${tmp_next}
+                      sed '1d;s/\x1b\[[0-9;]*[JH]//g' ${console_file}
+                    fi
+                  done
+                path: bash
+            image: gcloud-image
+            task: instance-create
+          - get: geode-latest
+    - in_parallel:
+        fail_fast: true
+        steps:
+        - config:
+            inputs:
+            - name: instance
+            - name: source
+            platform: linux
+            run:
+              args:
+              - -c
+              - |-
+                set -ueo pipefail
+                INSTANCE_USER=build
+                INSTANCE_DIR=$(pwd)/instance
+
+                if [ ! -d "${INSTANCE_DIR}" ]; then
+                  echo "${INSTANCE_DIR} not found."
+                  exit 1
+                fi
+
+                SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+                ssh_key_file=${INSTANCE_DIR}/identity
+                if [ ! -r "${ssh_key_file}" ]; then
+                  echo "${ssh_key_file} not readable."
+                  exit 1
+                fi
+
+                instance_file=${INSTANCE_DIR}/instance.sh
+                if [ ! -r "${instance_file}" ]; then
+                  echo "${instance_file} not readable."
+                  exit 1
+                fi
+
+                external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+                function remote_shell {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+                }
+
+                function remote_download {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+                }
+
+                function remote_download_directory {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+                }
+
+                function remote_upload {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+                }
+                remote_upload source .
+              path: bash
+          image: task-image
+          task: upload-source
+        - config:
+            inputs:
+            - name: instance
+            - name: geode-latest
+            platform: linux
+            run:
+              args:
+              - -c
+              - |-
+                set -ueo pipefail
+                INSTANCE_USER=build
+                INSTANCE_DIR=$(pwd)/instance
+
+                if [ ! -d "${INSTANCE_DIR}" ]; then
+                  echo "${INSTANCE_DIR} not found."
+                  exit 1
+                fi
+
+                SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+                ssh_key_file=${INSTANCE_DIR}/identity
+                if [ ! -r "${ssh_key_file}" ]; then
+                  echo "${ssh_key_file} not readable."
+                  exit 1
+                fi
+
+                instance_file=${INSTANCE_DIR}/instance.sh
+                if [ ! -r "${instance_file}" ]; then
+                  echo "${instance_file} not readable."
+                  exit 1
+                fi
+
+                external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+                function remote_shell {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+                }
+
+                function remote_download {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+                }
+
+                function remote_download_directory {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+                }
+
+                function remote_upload {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+                }
+                geode_version=$(cat geode-latest/version)
+                geode_name="apache-geode-${geode_version}"
+                geode_artifact="${geode_name}.tgz"
+                remote_upload geode-latest/${geode_artifact} .
+                remote_shell cmake -E tar xvf ${geode_artifact}
+                remote_shell cmake -E rename ${geode_name} geode
+              path: bash
+          image: task-image
+          task: upload-geode
+    - config:
+        inputs:
+        - name: instance
+        - name: version
+        - name: source
+        outputs:
+        - name: package
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            pushd source
+            git_url=$(git remote get-url origin)
+            git_rev=$(git rev-parse HEAD)
+            popd
+            version=$(cat version/number)
+            builddate=$(date "+%Y-%m-%d")
+            remote_shell cmake -E make_directory build
+            remote_shell cmake -E time cmake -E chdir build cmake ../source ${CMAKE_CONFIGURE_FLAGS} \
+                -DCMAKE_BUILD_TYPE=${CMAKE_CONFIG} \
+                -DGEODE_ROOT=../geode \
+                -DPRODUCT_VERSION=${version} \
+                -DPRODUCT_BUILDDATE=${builddate} \
+                -DPRODUCT_SOURCE_REVISION=${git_rev} \
+                -DPRODUCT_SOURCE_REPOSITORY=${git_url}
+            remote_shell cmake -E time cmake --build build --config ${CMAKE_CONFIG} -- ${CMAKE_BUILD_FLAGS}
+            remote_shell cmake -E time cmake --build build --config ${CMAKE_CONFIG} --target docs -- ${CMAKE_BUILD_FLAGS}
+            remote_shell cmake -E time cmake -E chdir build cpack -C ${CMAKE_CONFIG} -G "${CPACK_GENERATORS}" | tee cpack.out
+            packages=$(awk '/^CPack: - package: / {print $4}' cpack.out)
+            for package in ${packages}; do
+              remote_download ${package} package/
+            done
+            checksums=$(awk '/^CPack: - checksum file: / {print $5}' cpack.out)
+            for checksum in ${checksums}; do
+              remote_download ${checksum} package/
+            done
+          path: bash
+      image: task-image
+      task: build
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/cppcache/test ctest -C ${CMAKE_CONFIG} -j8 --timeout=300 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: cpp-unit-tests
+      timeout: 30m
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/cppcache/integration/test ctest -C ${CMAKE_CONFIG} -j4 --timeout=300 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: cpp-integration-tests
+      timeout: 1h
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/cppcache/integration-test ctest -C ${CMAKE_CONFIG} -j4 --timeout=500 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: cpp-legacy-integration-tests
+      timeout: 2h
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/clicache/test ctest -C ${CMAKE_CONFIG} -j8 --timeout=300 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: net-unmanaged-unit-tests
+      timeout: 10m
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/clicache/test2 ctest -C ${CMAKE_CONFIG} -j8 --timeout=300 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: net-unit-tests
+      timeout: 30m
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/clicache/integration-test2 ctest -C ${CMAKE_CONFIG} -j6 --timeout=300 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: net-integration-tests
+      timeout: 1h
+    - config:
+        inputs:
+        - name: instance
+        params:
+          CMAKE_BUILD_FLAGS: /m
+          CMAKE_CONFIG: Debug
+          CMAKE_CONFIGURE_FLAGS: -A x64 -Tv141,version=14.16,host=x64 -DCMAKE_SYSTEM_VERSION=10.0.16299.0
+          CPACK_GENERATORS: ZIP
+        platform: linux
+        run:
+          args:
+          - -c
+          - |-
+            set -ueo pipefail
+            INSTANCE_USER=build
+            INSTANCE_DIR=$(pwd)/instance
+
+            if [ ! -d "${INSTANCE_DIR}" ]; then
+              echo "${INSTANCE_DIR} not found."
+              exit 1
+            fi
+
+            SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+            ssh_key_file=${INSTANCE_DIR}/identity
+            if [ ! -r "${ssh_key_file}" ]; then
+              echo "${ssh_key_file} not readable."
+              exit 1
+            fi
+
+            instance_file=${INSTANCE_DIR}/instance.sh
+            if [ ! -r "${instance_file}" ]; then
+              echo "${instance_file} not readable."
+              exit 1
+            fi
+
+            external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+            function remote_shell {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+            }
+
+            function remote_download {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+            }
+
+            function remote_download_directory {
+              ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+            }
+
+            function remote_upload {
+              scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+            }
+            remote_shell cmake -E chdir build/clicache/integration-test ctest -C ${CMAKE_CONFIG} -j4 --timeout=500 --output-on-failure --repeat until-pass:4 --schedule-random
+          path: bash
+      image: task-image
+      task: net-legacy-integration-tests
+      timeout: 2h
+    ensure:
+      in_parallel:
+        steps:
+        - config:
+            inputs:
+            - name: instance
+            platform: linux
+            run:
+              args:
+              - -c
+              - |-
+                set -ueo pipefail
+                GOOGLE_PROJECT=apachegeode-ci
+                GOOGLE_ZONE=us-central1-a
+                INSTANCE_USER=build
+                INSTANCE_DIR=$(pwd)/instance
+
+                if [ ! -d "${INSTANCE_DIR}" ]; then
+                  echo "${INSTANCE_DIR} not found."
+                  exit 1
+                fi
+
+                instance_file=${INSTANCE_DIR}/instance.sh
+                instance_name=$(source ${instance_file} && echo -n ${name})
+
+                gcloud compute instances delete ${instance_name} \
+                    --project=${GOOGLE_PROJECT} \
+                    --zone=${GOOGLE_ZONE} \
+                    --delete-disks=all \
+                    --quiet
+              path: bash
+          image: gcloud-image
+          task: instance-delete
+    on_abort:
+      in_parallel:
+        steps:
+        - try:
+            attempts: 5
+            get_params:
+              skip_download: true
+            params:
+              context: build-windows-2019-vs-2019-debug
+              description: Build canceled
+              path: source
+              status: error
+            put: pr-status-error
+            resource: source
+    on_error:
+      in_parallel:
+        steps:
+        - try:
+            attempts: 5
+            get_params:
+              skip_download: true
+            params:
+              context: build-windows-2019-vs-2019-debug
+              description: null
+              path: source
+              status: error
+            put: pr-status-error
+            resource: source
+    on_failure:
+      in_parallel:
+        steps:
+        - config:
+            inputs:
+            - name: instance
+            outputs:
+            - name: build
+            platform: linux
+            run:
+              args:
+              - -c
+              - |-
+                set -ueo pipefail
+                INSTANCE_USER=build
+                INSTANCE_DIR=$(pwd)/instance
+
+                if [ ! -d "${INSTANCE_DIR}" ]; then
+                  echo "${INSTANCE_DIR} not found."
+                  exit 1
+                fi
+
+                SSH_OPTIONS=${SSH_OPTIONS:-"-o StrictHostKeyChecking=no -o PasswordAuthentication=no"}
+
+                ssh_key_file=${INSTANCE_DIR}/identity
+                if [ ! -r "${ssh_key_file}" ]; then
+                  echo "${ssh_key_file} not readable."
+                  exit 1
+                fi
+
+                instance_file=${INSTANCE_DIR}/instance.sh
+                if [ ! -r "${instance_file}" ]; then
+                  echo "${instance_file} not readable."
+                  exit 1
+                fi
+
+                external_ip=$(source ${instance_file} && echo -n ${networkInterfaces_accessConfigs_natIP})
+
+                function remote_shell {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} "$@"
+                }
+
+                function remote_download {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "${INSTANCE_USER}@${external_ip}:${1}" "$2"
+                }
+
+                function remote_download_directory {
+                  ssh ${SSH_OPTIONS} -i ${ssh_key_file} ${INSTANCE_USER}@${external_ip} tar -C $(dirname ${1}) -czf - $(basename ${1}) | tar -C ${2} -zxf -
+                }
+
+                function remote_upload {
+                  scp ${SSH_OPTIONS} -i ${ssh_key_file} -q -r "$1" "${INSTANCE_USER}@${external_ip}:${2}"
+                }
+                remote_download_directory build .
+              path: bash
+          image: task-image
+          task: download-build
+        - try:
+            attempts: 5
+            get_params:
+              skip_download: true
+            params:
+              context: build-windows-2019-vs-2019-debug
+              description: null
+              path: source
+              status: failure
+            put: pr-status-failure
+            resource: source
+    on_success:
+      in_parallel:
+        steps:
+        - try:
+            attempts: 5
+            get_params:
+              skip_download: true
+            params:
+              context: build-windows-2019-vs-2019-debug
+              description: null
+              path: source
+              status: success
+            put: pr-status-success
+            resource: source
+  public: true
+- name: check-source
+  plan:
+  - in_parallel:
+      fail_fast: true
+      steps:
+      - get: clang-tools-image
+      - get: version
+      - get: source
+        on_success:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-format
+                  description: null
+                  path: source
+                  status: pending
+                put: pr-status-pending
+                resource: source
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-tidy
+                  description: null
+                  path: source
+                  status: pending
+                put: pr-status-pending
+                resource: source
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: rat-check
+                  description: null
+                  path: source
+                  status: pending
+                put: pr-status-pending
+                resource: source
+        trigger: true
+        version: every
+      - do:
+        - get: task-image
+        - get: geode-latest
+        - config:
+            caches:
+            - path: geode
+            inputs:
+            - name: geode-latest
+            outputs:
+            - name: geode
+            platform: linux
+            run:
+              args:
+              - -c
+              - |-
+                set -ueo pipefail
+                if (cmp -s geode-latest/version geode/version); then
+                 exit 0
+                fi
+                geode_version=$(cat geode-latest/version)
+                geode_name="apache-geode-${geode_version}"
+                geode_artifact="${geode_name}.tgz"
+                tar xvf geode-latest/${geode_artifact} --directory=geode --strip-components=1
+                cp geode-latest/version geode/version
+              path: bash
+          image: task-image
+          task: extract-geode
+  - in_parallel:
+      steps:
+      - config:
+          inputs:
+          - name: source
+          - name: geode
+          outputs:
+          - name: build
+          platform: linux
+          run:
+            args:
+            - -c
+            - |-
+              set -ueo pipefail
+              export GEODE_HOME=$(pwd)/geode
+              log=$(mktemp)
+              cd build
+              cmake ../source -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >>${log} 2>&1 || (cat ${log}; exit 1)
+              cmake --build dependencies --parallel $(nproc) >>${log} 2>&1 || (cat ${log}; exit 1)
+              run-clang-tidy -j $(nproc) -quiet
+            path: bash
+        image: clang-tools-image
+        on_abort:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-tidy
+                  description: Build canceled
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_error:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-tidy
+                  description: null
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_failure:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-tidy
+                  description: null
+                  path: source
+                  status: failure
+                put: pr-status-failure
+                resource: source
+        on_success:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-tidy
+                  description: null
+                  path: source
+                  status: success
+                put: pr-status-success
+                resource: source
+        task: clang-tidy
+      - config:
+          inputs:
+          - name: source
+          - name: geode
+          outputs:
+          - name: build
+          platform: linux
+          run:
+            args:
+            - -c
+            - |-
+              set -ueo pipefail
+              export GEODE_HOME=$(pwd)/geode
+              log=$(mktemp)
+              cd build
+              cmake ../source -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >>${log} 2>&1 || (cat ${log}; exit 1)
+              jq -r '.[].file' compile_commands.json | sort | uniq | grep -v $(pwd) | xargs clang-format --dry-run -Werror
+            path: bash
+        image: clang-tools-image
+        on_abort:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-format
+                  description: Build canceled
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_error:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-format
+                  description: null
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_failure:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-format
+                  description: null
+                  path: source
+                  status: failure
+                put: pr-status-failure
+                resource: source
+        on_success:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: clang-format
+                  description: null
+                  path: source
+                  status: success
+                put: pr-status-success
+                resource: source
+        task: clang-format
+      - config:
+          inputs:
+          - name: source
+          - name: geode
+          outputs:
+          - name: build
+          platform: linux
+          run:
+            args:
+            - -c
+            - |-
+              set -ueo pipefail
+              export GEODE_HOME=$(pwd)/geode
+              log=$(mktemp)
+              cd build
+              cmake ../source -DUSE_RAT=ON >>${log} 2>&1 || (cat ${log}; exit 1)
+              cmake --build . --target rat-check
+            path: bash
+        image: clang-tools-image
+        on_abort:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: rat-check
+                  description: Build canceled
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_error:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: rat-check
+                  description: null
+                  path: source
+                  status: error
+                put: pr-status-error
+                resource: source
+        on_failure:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: rat-check
+                  description: null
+                  path: source
+                  status: failure
+                put: pr-status-failure
+                resource: source
+        on_success:
+          in_parallel:
+            steps:
+            - try:
+                attempts: 5
+                get_params:
+                  skip_download: true
+                params:
+                  context: rat-check
+                  description: null
+                  path: source
+                  status: success
+                put: pr-status-success
+                resource: source
+        task: rat-check
+  public: true
+- name: update-pipeline
+  plan:
+  - in_parallel:
+      fail_fast: true
+      steps:
+      - get: ytt-image
+      - get: ci-source
+        trigger: true
+  - config:
+      inputs:
+      - name: ci-source
+        path: source
+      outputs:
+      - name: pipeline
+      platform: linux
+      run:
+        args:
+        - --file
+        - source/ci/lib
+        - --file
+        - source/ci/base
+        - --file
+        - source/ci/pr
+        - --data-value
+        - pipeline.name=geode-native-develop
+        - --data-value
+        - pipeline.variant=pr
+        - --data-value
+        - github.owner=apache
+        - --data-value
+        - github.repository=geode-native
+        - --data-value
+        - repository.branch=develop
+        - --data-value
+        - google.project=apachegeode-ci
+        - --data-value
+        - google.zone=us-central1-a
+        - --data-value
+        - google.storage.bucket=apachegeode-ci-concourse
+        - --data-value
+        - google.storage.key=geode-native/geode-native-develop
+        - --output-files
+        - pipeline/
+        path: /usr/bin/ytt
+    image: ytt-image
+    task: ytt
+  - file: pipeline/pipeline.yml
+    set_pipeline: self
+  public: true
+  serial: true
+resource_types:
+- name: apache-directory-index-resource
+  source:
+    repository: jakepivotal/apache-directory-index-resource
+  type: docker-image
+- name: gci-resource
+  source:
+    repository: smgoller/gci-resource
+  type: docker-image
+- name: gcs-resource
+  source:
+    repository: frodenas/gcs-resource
+  type: docker-image
+- name: github-pr-resource
+  source:
+    repository: teliaoss/github-pr-resource
+  type: docker-image
+- name: maven-resource
+  source:
+    repository: jakepivotal/maven-resource
+  type: docker-image
+resources:
+- icon: github
+  name: ci-source
+  source:
+    branch: develop
+    depth: 1
+    ignore_paths: []
+    paths:
+    - ci/*
+    uri: https://github.com/apache/geode-native.git
+  type: git
+- icon: docker
+  name: clang-tools-image
+  source:
+    password: ((concourse-gcp-key))
+    repository: gcr.io/apachegeode-ci/geode-native-clang-tools
+    tag: latest
+    username: _json_key
+  type: docker-image
+- icon: docker
+  name: gcloud-image
+  source:
+    password: ((concourse-gcp-key))
+    registry_mirror:
+      host: null
+    repository: gcr.io/google.com/cloudsdktool/cloud-sdk
+    tag: alpine
+    username: _json_key
+  type: registry-image
+- icon: archive
+  name: geode-latest
+  source:
+    artifact: org.apache.geode:apache-geode:tgz
+    url: https://maven.apachegeode-ci.info/snapshots
+    version: 1\.15\.0-build\..*
+  type: maven-resource
+- icon: google-cloud
+  name: geode-native-develop-build-rhel-7-gci
+  source:
+    family: geode-native-develop-build-rhel-7
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-rhel-8-gci
+  source:
+    family: geode-native-develop-build-rhel-8
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-ubuntu-16-04-gci
+  source:
+    family: geode-native-develop-build-ubuntu-16-04
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-ubuntu-18-04-gci
+  source:
+    family: geode-native-develop-build-ubuntu-18-04
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-ubuntu-20-04-gci
+  source:
+    family: geode-native-develop-build-ubuntu-20-04
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-windows-2016-vs-2017-gci
+  source:
+    family: geode-native-develop-build-windows-2016-vs-2017
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- icon: google-cloud
+  name: geode-native-develop-build-windows-2019-vs-2019-gci
+  source:
+    family: geode-native-develop-build-windows-2019-vs-2019
+    family_project: apachegeode-ci
+    key: ((concourse-gcp-key))
+  type: gci-resource
+- check_every: 1m
+  icon: github
+  name: source
+  source:
+    access_token: ((github-pr-access-token))
+    base_branch: develop
+    repository: apache/geode-native
+  type: github-pr-resource
+- icon: docker
+  name: task-image
+  source:
+    password: ((concourse-gcp-key))
+    repository: gcr.io/apachegeode-ci/geode-native-task
+    tag: latest
+    username: _json_key
+  type: docker-image
+- icon: numeric-1-box-multiple
+  name: version
+  source:
+    bucket: apachegeode-ci-concourse
+    driver: gcs
+    initial_version: 1.15.0-build.0
+    json_key: ((concourse-gcp-key))
+    key: geode-native/geode-native-develop/version
+  type: semver
+- icon: docker
+  name: ytt-image
+  source:
+    password: null
+    registry_mirror:
+      host: mirror.gcr.io
+    repository: gerritk/ytt
+    tag: latest
+    username: null
+  type: registry-image
