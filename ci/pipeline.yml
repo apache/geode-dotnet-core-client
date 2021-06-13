@@ -627,45 +627,11 @@ jobs:
   - in_parallel:
       fail_fast: true
       steps:
-      - get: clang-tools-image
       - get: version
       - get: source
         on_success:
           in_parallel:
             steps:
-            - try:
-                attempts: 5
-                get_params:
-                  skip_download: true
-                params:
-                  context: clang-format
-                  description: null
-                  path: source
-                  status: pending
-                put: pr-status-pending
-                resource: source
-            - try:
-                attempts: 5
-                get_params:
-                  skip_download: true
-                params:
-                  context: clang-tidy
-                  description: null
-                  path: source
-                  status: pending
-                put: pr-status-pending
-                resource: source
-            - try:
-                attempts: 5
-                get_params:
-                  skip_download: true
-                params:
-                  context: rat-check
-                  description: null
-                  path: source
-                  status: pending
-                put: pr-status-pending
-                resource: source
         trigger: true
         version: every
       - do:
