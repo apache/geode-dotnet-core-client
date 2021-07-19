@@ -1,6 +1,5 @@
 using GemFireSessionState.Models;
 using Apache.Geode.Session;
-using Steeltoe.Connector.GemFire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -27,10 +26,10 @@ namespace SessionSample
 
         public void ConfigureServices(IServiceCollection services)
         {
-          services.AddGemFireConnection(Configuration, typeof(BasicAuthInitialize), loggerFactory: LoggerFactory);
+          //services.AddGemFireConnection(Configuration, typeof(BasicAuthInitialize), loggerFactory: LoggerFactory);
 
           // TODO: Don't hardcode region name here
-          services.AddSingleton<IDistributedCache>((isp) => new SessionStateCache(isp.GetRequiredService<Cache>(), "SteeltoeDemo", isp.GetService<ILogger<SessionStateCache>>()));
+          services.AddSingleton<IDistributedCache>((isp) => new SessionStateCache(isp.GetRequiredService<Cache>(), "NetCoreSession", isp.GetService<ILogger<SessionStateCache>>()));
 
           services.AddSession(options =>
             {

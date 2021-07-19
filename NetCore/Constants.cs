@@ -9,7 +9,7 @@ namespace Apache
             {
               public const string libPath =
                   //"/Users/matthewreddington/workspace/apache/geode-native/cppcache/shared/libapache-geode.dylib";
-                  "C:/geode-native-c_bindings/build/c_bindings/Debug/apache-geode-c.dll";
+                  "C:/geode-native/build/c_bindings/Debug/apache-geode-c.dll";
             }
         }
     }

@@ -56,6 +56,7 @@ jobs:
               cd package-ubuntu-20.0.4-debug-archive
               tar xvf apache-geode-native-1.15.0-build.46-Linux-64bit.tar.gz
               # geode-native install now in apache-geode-native
+              docker pull kitware/cmake
               cd ..
               cd ./netcore-source
               dotnet restore
