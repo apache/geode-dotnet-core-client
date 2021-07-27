@@ -1,21 +1,22 @@
 ﻿using Apache.Geode.NetCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Apache.Geode.Session
 {
-    public class SessionStateValue
+    public class GeodeSessionStateValue
     {
         DateTime _lastAccessTimeUtc;
         DateTime _expirationTimeUtc = DateTime.MinValue;
         TimeSpan _spanUntilStale = TimeSpan.Zero;
         private byte[] _value;
 
-        public SessionStateValue() { }
-        public SessionStateValue(byte[] value)
+        public GeodeSessionStateValue() { }
+        public GeodeSessionStateValue(byte[] value)
         {
             FromByteArray(value);
         }
@@ -88,32 +89,41 @@ namespace Apache.Geode.Session
         }
     }
 
-    public class SessionStateCache : GeodeNativeObject, IDistributedCache
+    public class GeodeSessionStateCache : GeodeNativeObject, IDistributedCache
     {
-        private readonly Cache _cache;
-        private ILogger<SessionStateCache> _logger;
+        private readonly IGeodeCache _cache;
+        private ILogger<GeodeSessionStateCache> _logger;
         private static Region _region;
         private string _regionName;
         private readonly SemaphoreSlim _connectLock = new SemaphoreSlim(initialCount: 1, maxCount: 1);
 
-        public SessionStateCache(Cache cache, string regionName, ILogger<SessionStateCache> logger = null)
-        {
-            _regionName = regionName ?? throw new ArgumentNullException(regionName);
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _logger = logger;
+        public GeodeSessionStateCache(IOptions<GeodeSessionStateCacheOptions> optionsAccessor) {
 
-            _cache.PoolFactory.AddLocator("localhost", 10334);
-            using var pool = _cache.PoolFactory.CreatePool("pool");
+            var host = optionsAccessor.Value.Host;
+            var port = optionsAccessor.Value.Port;
+            _regionName = optionsAccessor.Value.RegionName;
+
+            _cache = CacheFactory.Create()
+                .SetProperty("log-level", "none")
+                .CreateCache();
+
+            _cache.PoolManager
+                .CreatePoolFactory()
+                .AddLocator(host, port)
+                .CreatePool("pool");
+
+            var regionFactory = _cache.CreateRegionFactory(RegionShortcut.Proxy);
+            _region = regionFactory.CreateRegion(_regionName);
         }
 
         // Returns the SessionStateValue for key, or null if key doesn't exist
-        public SessionStateValue GetValueForKey(string key)
+        public GeodeSessionStateValue GetValueForKey(string key)
         {
             byte[] cacheValue = _region.GetByteArray(key);
 
             if (cacheValue != null)
             {
-                return new SessionStateValue(cacheValue);
+                return new GeodeSessionStateValue(cacheValue);
             }
             else
                 return null;
@@ -129,7 +139,7 @@ namespace Apache.Geode.Session
             Connect();
 
             // Check for nonexistent key
-            SessionStateValue ssValue = GetValueForKey(key);
+            GeodeSessionStateValue ssValue = GetValueForKey(key);
             if (ssValue == null)
                 return null;
 
@@ -178,7 +188,7 @@ namespace Apache.Geode.Session
             Connect();
 
             // Check for nonexistent key
-            SessionStateValue ssValue = GetValueForKey(key);
+            GeodeSessionStateValue ssValue = GetValueForKey(key);
             if (ssValue == null)
                 return;
 
@@ -263,7 +273,7 @@ namespace Apache.Geode.Session
 
             Connect();
 
-            SessionStateValue ssValue = new SessionStateValue();
+            GeodeSessionStateValue ssValue = new GeodeSessionStateValue();
             ssValue.Value = value;
 
             DateTime nowUtc = DateTime.UtcNow;

@@ -24,7 +24,7 @@ namespace Apache.Geode.Session.IntegrationTests
             using var poolFactory = cache.PoolFactory.AddLocator("localhost", 10334);
             using var pool = poolFactory.CreatePool("myPool");
 
-            using var ssCache = new SessionStateCache(cache, _regionName);
+            using var ssCache = new GeodeSessionStateCache(cache, _regionName);
 
             var options = new DistributedCacheEntryOptions();
             DateTime localTime = DateTime.Now.AddDays(1);
@@ -48,7 +48,7 @@ namespace Apache.Geode.Session.IntegrationTests
             using PoolFactory poolFactory = cache.PoolFactory.AddLocator("localhost", 10334);
             using var pool = poolFactory.CreatePool("myPool");
 
-            using var ssCache = new SessionStateCache(cache, _regionName);
+            using var ssCache = new GeodeSessionStateCache(cache, _regionName);
 
             var options = new DistributedCacheEntryOptions();
             int numSeconds = 20;
@@ -81,7 +81,7 @@ namespace Apache.Geode.Session.IntegrationTests
             using var cache = (Cache)cacheFactory.CreateCache();
             PoolFactory poolFactory = cache.PoolFactory;
 
-            using var ssCache = new SessionStateCache(cache, _regionName);
+            using var ssCache = new GeodeSessionStateCache(cache, _regionName);
 
             var options = new DistributedCacheEntryOptions();
             options.AbsoluteExpiration = DateTime.Now.AddSeconds(5);
@@ -102,7 +102,7 @@ namespace Apache.Geode.Session.IntegrationTests
             using var poolFactory = cache.PoolFactory.AddLocator("localhost", 10334);
             using var pool = poolFactory.CreatePool("myPool");
 
-            using var ssCache = new SessionStateCache(cache, _regionName);
+            using var ssCache = new GeodeSessionStateCache(cache, _regionName);
 
             var options = new DistributedCacheEntryOptions();
             DateTime localTime = DateTime.Now.AddDays(1);
@@ -129,7 +129,7 @@ namespace Apache.Geode.Session.IntegrationTests
             using var poolFactory = cache.PoolFactory.AddLocator("localhost", 10334);
             using var pool = poolFactory.CreatePool("myPool");
 
-            using var ssCache = new SessionStateCache(cache, _regionName);
+            using var ssCache = new GeodeSessionStateCache(cache, _regionName);
 
             var options = new DistributedCacheEntryOptions();
             DateTime localTime = DateTime.Now.AddDays(1);
